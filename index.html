@@ -841,8 +841,8 @@ function guestSendSuggestion(text){
     msgs.appendChild(typing);msgs.scrollTop=msgs.scrollHeight;
   }
 
-  fetch('https://conversa-proxy.eleazarvf.workers.dev',{
-    method:'POST',headers:{'Content-Type':'application/json'},
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
   }).then(r=>r.json()).then(data=>{
     document.getElementById('guest-typing')?.remove();
@@ -1177,8 +1177,8 @@ async function _doLoadDailyPortion(){
   }
 
   try{
-    const res=await fetch('https://conversa-proxy.eleazarvf.workers.dev',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:600,
@@ -1525,8 +1525,8 @@ async function sendMessage(){
   if(S.user)S.user.credits=Math.max(0,S.user.credits-1);
 
   try{
-    const res=await fetch('https://conversa-proxy.eleazarvf.workers.dev',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
     });
     const data=await res.json();
