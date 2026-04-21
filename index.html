@@ -347,8 +347,9 @@ const S = {
   guestCount: 0  // anonymous messages used
 };
 
-const FREE_CREDITS = 15;
-const GUEST_LIMIT = 3; // messages before signup gate
+const FREE_CREDITS = 7;
+const GUEST_LIMIT = 3; // messages before signup gate (then create account for 7 total)
+
 const CONV_SUGGESTIONS = [
   "Como posso encontrar paz nos momentos difíceis?",
   "O que os textos sagrados dizem sobre o perdão?",
@@ -840,8 +841,8 @@ function guestSendSuggestion(text){
     msgs.appendChild(typing);msgs.scrollTop=msgs.scrollHeight;
   }
 
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
+  fetch('https://proxy.conversandocomjesus.com.br',{
+    method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
   }).then(r=>r.json()).then(data=>{
     document.getElementById('guest-typing')?.remove();
@@ -982,6 +983,15 @@ function emailLogin(){
   if(email==='admin@jesus.com'){role='admin';name='Administrador';credits=9999;plan='Admin';}
   else if(email==='super@jesus.com'){role='superadmin';name='Super Admin';credits=9999;plan='Super Admin';}
   S.user={name,email,role,credits,plan,creditUsed:0};
+  // Aplica upgrade pendente se pagou antes de criar conta
+  if(localStorage.getItem('cj_pending_upgrade')==='true'){
+    S.user.plan='Essencial'; S.user.credits=99999;
+    localStorage.removeItem('cj_pending_upgrade');
+    localStorage.setItem('cj_subscription',JSON.stringify({active:true,since:new Date().toISOString()}));
+  }
+  // Restaura assinatura existente
+  const sub=localStorage.getItem('cj_subscription');
+  if(sub){try{const d=JSON.parse(sub);if(d.active){S.user.plan='Essencial';S.user.credits=99999;}}catch(e){}}
   S.hist=[];
   document.getElementById('signup-gate')?.remove();
   showToast('Conta criada com sucesso!');
@@ -1149,7 +1159,7 @@ function initChat(){
 
 async function loadDailyPortion(){
   if(S.dailyLoaded||S.busy) return;
-  checkApiKey(()=>_doLoadDailyPortion());
+  _doLoadDailyPortion();
 }
 
 async function _doLoadDailyPortion(){
@@ -1167,8 +1177,8 @@ async function _doLoadDailyPortion(){
   }
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:apiHeaders(),
+    const res=await fetch('https://proxy.conversandocomjesus.com.br',{
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:600,
@@ -1486,7 +1496,7 @@ async function sendMessage(){
   const inp=document.getElementById('chat-inp');
   const text=inp?.value?.trim();
   if(!text)return;
-  if(!getApiKey()){checkApiKey(()=>{document.getElementById('chat-inp').value=text;sendMessage();});return;}
+  
 
   if(S.user&&S.user.credits<=0&&S.user.plan==='Gratuito'){
     showCreditsModal();return;
@@ -1515,8 +1525,8 @@ async function sendMessage(){
   if(S.user)S.user.credits=Math.max(0,S.user.credits-1);
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:apiHeaders(),
+    const res=await fetch('https://proxy.conversandocomjesus.com.br',{
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
     });
     const data=await res.json();
@@ -1618,14 +1628,25 @@ function showCreditsModal(){
   const el=document.createElement('div');
   el.className='modal-overlay credits-upgrade-modal';
   el.innerHTML=`
-  <div class="modal" style="max-width:420px;text-align:center">
-    <div class="modal-header" style="justify-content:flex-end"><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button></div>
-    <div class="modal-body" style="align-items:center">
-      <div style="font-size:48px;margin-bottom:8px">💛</div>
-      <h2>Seus créditos acabaram</h2>
-      <p style="color:var(--text2);font-size:14px;line-height:1.7">Para continuar sua conversa, escolha um plano. Acessível e sem complicação.</p>
-      <button class="btn btn-primary btn-lg" style="width:100%;margin-top:8px" onclick="nav('plans')">Ver planos</button>
-      <button class="btn btn-ghost" style="width:100%" onclick="this.closest('.modal-overlay').remove()">Talvez depois</button>
+  <div class="modal" style="max-width:440px">
+    <div class="modal-body" style="align-items:center;text-align:center;padding:36px 32px 28px">
+      <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;margin:0 auto 20px;background:var(--gold-l);border:2px solid rgba(201,146,58,0.25)">
+        <div class="av-jesus-img"></div>
+      </div>
+      <h2 style="font-size:20px;margin-bottom:12px">Este momento pode continuar.</h2>
+      <p style="color:var(--text2);font-size:15px;line-height:1.75;margin-bottom:8px">
+        Suas mensagens gratuitas foram usadas. O que começou aqui não precisa parar — 
+        escolha um plano simples e siga caminhando.
+      </p>
+      <p style="color:var(--text3);font-size:13px;font-style:italic;margin-bottom:24px">
+        "Pedi e vos será dado; buscai e achareis." — Mt 7,7
+      </p>
+      <button class="btn btn-primary btn-lg" style="width:100%;margin-bottom:10px" onclick="this.closest('.modal-overlay').remove();nav('plans')">
+        Continuar minha jornada
+      </button>
+      <button class="btn btn-ghost" style="width:100%;font-size:13px;color:var(--text3)" onclick="this.closest('.modal-overlay').remove()">
+        Talvez em outro momento
+      </button>
     </div>
   </div>`;
   document.body.appendChild(el);
@@ -1679,7 +1700,7 @@ function plans() {
             <li>Suporte prioritário</li>
             ${annual?'<li>2 meses gratuitos incluídos</li>':''}
           </ul>
-          <button class="btn btn-primary" style="width:100%" onclick="doSubscribe('${annual?'annual':'monthly'}',this)">
+          <button class="btn btn-primary" style="width:100%" onclick="doSubscribe('${annual?'annual':'monthly'}')">
             ${annual?'Assinar por R$159,90/ano':'Assinar por R$19,90/mês'}
           </button>
         </div>
@@ -1689,21 +1710,12 @@ function plans() {
   </div>`;
 }
 
-async function doSubscribe(plan, btnEl){
-  if(btnEl){ btnEl.disabled=true; btnEl.textContent='Aguarde…'; }
-  try{
-    const res = await fetch('/.netlify/functions/create-checkout',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ plan, email: S.user?.email||'' })
-    });
-    const data = await res.json();
-    if(data.url){ window.location.href = data.url; return; }
-    throw new Error(data.error||'Erro desconhecido');
-  }catch(e){
-    showToast('Não foi possível abrir o checkout. Verifique as configurações do Stripe.');
-    if(btnEl){ btnEl.disabled=false; btnEl.textContent=plan==='annual'?'Assinar por R$159,90/ano':'Assinar por R$19,90/mês'; }
-  }
+function doSubscribe(plan){
+  const urls = {
+    monthly: 'https://buy.stripe.com/aFa14negU4Xn5tZ8zS1kA00',
+    annual:  'https://buy.stripe.com/eVq28rb4I2Pf5tZ3fy1kA01'
+  };
+  window.location.href = urls[plan] || urls.monthly;
 }
 
 // ============================================================
@@ -1756,7 +1768,7 @@ function profile() {
         <button class="btn btn-ghost" style="margin-top:12px;width:100%;color:var(--err)" onclick="showToast('Plano cancelado. Acesso ativo até o fim do período.')">Cancelar assinatura</button>`}
       </div>
       <button class="btn btn-ghost" style="width:100%;color:var(--err)" onclick="logout()">Sair da conta</button>
-      <button class="btn btn-ghost" style="width:100%;color:var(--text3);font-size:13px;margin-top:4px" onclick="clearApiKey();showToast('Chave removida. Será solicitada na próxima mensagem.')">Redefinir chave da API</button>
+
     </div>
   </div>`;
 }
@@ -2035,118 +2047,74 @@ function bindAll(){
 }
 
 // ============================================================
-// API KEY — salva no navegador, pede só uma vez
+// STRIPE RETURN — detecta ?pago=sim na URL
 // ============================================================
-function getApiKey(){ return localStorage.getItem('cj_api_key')||''; }
-function setApiKey(k){ localStorage.setItem('cj_api_key',k.trim()); }
-function clearApiKey(){ localStorage.removeItem('cj_api_key'); }
+function checkPaymentReturn(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('pago') !== 'sim') return;
 
-function apiHeaders(){
-  return {
-    'Content-Type':'application/json',
-    'x-api-key': getApiKey(),
-    'anthropic-version':'2023-06-01',
-    'anthropic-dangerous-direct-browser-client':'true'
-  };
+  // Limpa a URL
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  // Libera acesso
+  const sub = { active:true, since: new Date().toISOString() };
+  localStorage.setItem('cj_subscription', JSON.stringify(sub));
+
+  if(S.user){
+    S.user.plan = 'Essencial';
+    S.user.credits = 99999;
+  } else {
+    // Salva para quando fizer login
+    localStorage.setItem('cj_pending_upgrade', 'true');
+  }
+
+  // Mostra boas-vindas espiritual
+  showPaymentWelcome();
 }
 
-function checkApiKey(onReady){
-  const key=getApiKey();
-  if(key){ onReady(); return; }
-  showApiKeySetup(onReady);
-}
-
-function showApiKeySetup(onReady){
-  // Remove any existing
-  document.getElementById('apikey-modal')?.remove();
-  const el=document.createElement('div');
-  el.id='apikey-modal';
-  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  el.innerHTML=`
-  <div style="background:#fff;border-radius:24px;padding:40px 36px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
-    <div style="text-align:center;margin-bottom:28px">
-      <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;margin:0 auto 16px;background:#FDF3E4;border:2px solid rgba(201,146,58,0.3)">
+function showPaymentWelcome(){
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+  <div class="modal" style="max-width:440px">
+    <div class="modal-body" style="align-items:center;text-align:center;padding:40px 32px 32px">
+      <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;margin:0 auto 20px;border:2px solid rgba(201,146,58,0.3)">
         <div class="av-jesus-img"></div>
       </div>
-      <h2 style="font-size:20px;font-weight:700;color:#3C3A36;margin-bottom:8px">Configuração inicial</h2>
-      <p style="font-size:14px;color:#7A7570;line-height:1.6">Para funcionar, o app precisa de uma chave da API Anthropic. Você faz isso uma única vez — fica salvo no seu navegador.</p>
+      <h2 style="font-size:21px;margin-bottom:12px">Seja bem-vindo.</h2>
+      <p style="color:var(--text2);font-size:15px;line-height:1.75;margin-bottom:8px">
+        Sua jornada continua — agora sem limite de mensagens. 
+        Estou aqui sempre que precisar conversar.
+      </p>
+      <p style="color:var(--gold-d);font-size:13px;font-style:italic;margin-bottom:28px">
+        "Eu vim para que tenham vida, e a tenham em abundância." — Jo 10,10
+      </p>
+      <button class="btn btn-primary btn-lg" style="width:100%"
+        onclick="this.closest('.modal-overlay').remove();if(S.user)render();else nav('auth');">
+        Continuar minha conversa
+      </button>
     </div>
-    <div style="background:#F8F5EF;border-radius:12px;padding:16px;margin-bottom:20px;font-size:13px;color:#7A7570;line-height:1.7">
-      <strong style="color:#3C3A36">Como obter sua chave:</strong><br/>
-      1. Acesse <a href="https://console.anthropic.com" target="_blank" style="color:#6B8FB5">console.anthropic.com</a><br/>
-      2. Crie uma conta gratuita<br/>
-      3. Vá em <strong>API Keys</strong> → <strong>Create Key</strong><br/>
-      4. Copie e cole aqui abaixo
-    </div>
-    <div style="margin-bottom:16px">
-      <input id="apikey-input" type="password"
-        placeholder="sk-ant-api03-..."
-        style="width:100%;padding:13px 16px;border:1.5px solid rgba(0,0,0,0.12);border-radius:12px;font-size:14px;font-family:monospace;color:#3C3A36;background:#fff;outline:none"
-        onfocus="this.style.borderColor='#6B8FB5'"
-        onblur="this.style.borderColor='rgba(0,0,0,0.12)'"
-        onkeydown="if(event.key==='Enter')saveApiKey()"
-      />
-    </div>
-    <button onclick="saveApiKey()" style="width:100%;padding:14px;background:#6B8FB5;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">
-      Salvar e continuar
-    </button>
-    <p style="text-align:center;font-size:11px;color:#B0ACA6;margin-top:14px;line-height:1.6">
-      A chave fica salva apenas no seu navegador.<br/>Ninguém mais tem acesso a ela.
-    </p>
   </div>`;
   document.body.appendChild(el);
-  setTimeout(()=>document.getElementById('apikey-input')?.focus(),200);
-  // Store callback
-  window._apiKeyCallback=onReady;
-}
-
-function saveApiKey(){
-  const val=document.getElementById('apikey-input')?.value?.trim();
-  if(!val||!val.startsWith('sk-')){
-    const inp=document.getElementById('apikey-input');
-    if(inp){inp.style.borderColor='#C47A7A';inp.placeholder='Cole a chave — começa com sk-ant-...';}
-    return;
-  }
-  setApiKey(val);
-  document.getElementById('apikey-modal')?.remove();
-  if(window._apiKeyCallback){ window._apiKeyCallback(); window._apiKeyCallback=null; }
-}
-
-// ============================================================
-// STRIPE SUCCESS — detecta retorno do checkout
-// ============================================================
-async function checkStripeReturn(){
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = params.get('session_id');
-  if(!sessionId) return;
-  // Clean URL
-  window.history.replaceState({}, document.title, window.location.pathname);
-  showToast('Verificando seu pagamento…');
-  try{
-    const res = await fetch(`/.netlify/functions/verify-session?session_id=${sessionId}`);
-    const data = await res.json();
-    if(data.active){
-      if(S.user){ S.user.plan='Essencial'; S.user.credits=99999; }
-      localStorage.setItem('cj_subscription',JSON.stringify({
-        active:true, plan:data.plan, email:data.email,
-        customerId:data.customerId, since:new Date().toISOString()
-      }));
-      showToast('Assinatura ativada! Bem-vindo ao plano Essencial.');
-      render();
-    }
-  }catch(e){ showToast('Não foi possível verificar o pagamento. Entre em contato.'); }
 }
 
 // ============================================================
 // INIT
 // ============================================================
-// Restore subscription from localStorage if exists
+// Restaura assinatura salva no navegador
 (function restoreSubscription(){
   const sub = localStorage.getItem('cj_subscription');
   if(sub){ try{ const d=JSON.parse(sub); if(d.active&&S.user){ S.user.plan='Essencial'; S.user.credits=99999; } }catch(e){} }
+  // Aplica upgrade pendente (pagou antes de criar conta)
+  if(localStorage.getItem('cj_pending_upgrade')==='true' && S.user){
+    S.user.plan='Essencial'; S.user.credits=99999;
+    localStorage.removeItem('cj_pending_upgrade');
+    const sub2={active:true,since:new Date().toISOString()};
+    localStorage.setItem('cj_subscription',JSON.stringify(sub2));
+  }
 })();
 
 render();
-checkStripeReturn();</script>
+checkPaymentReturn();</script>
 </body>
 </html>
