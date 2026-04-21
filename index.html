@@ -843,7 +843,7 @@ function guestSendSuggestion(text){
 
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-client':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
   }).then(r=>r.json()).then(data=>{
     document.getElementById('guest-typing')?.remove();
     const reply=data.content?.[0]?.text||'Não consegui uma resposta agora. Tente de novo.';
@@ -1180,7 +1180,7 @@ async function _doLoadDailyPortion(){
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-client':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-5',
+        model:'claude-haiku-4-5-20251001',
         max_tokens:600,
         system:SYSTEM_PROMPT,
         messages:[{role:'user',content:DAILY_PORTION_PROMPT}]
@@ -1527,7 +1527,7 @@ async function sendMessage(){
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-client':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:SYSTEM_PROMPT,messages:S.hist})
     });
     const data=await res.json();
     if(data.error)throw new Error(data.error.message);
